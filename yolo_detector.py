@@ -32,7 +32,7 @@ def draw_boxes(frame, boxes):
 
 def detect_object(frame):
 
-    results = model.track(source=frame, classes= 15, persist=True)
+    results = model.track(source=frame, classes= 15)
 
     for result in results:
         frame = draw_boxes(frame, result.boxes)
