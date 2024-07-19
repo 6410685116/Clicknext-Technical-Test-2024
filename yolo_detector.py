@@ -1,71 +1,61 @@
 from ultralytics import YOLO
 from ultralytics.utils.plotting import Annotator, colors
-import cv2
+import cv2 
+from collections import defaultdict
 
-# Load YOLO model
-model = YOLO("yolov8a.pt")
+model = YOLO("yolov8n.pt")
+text = "Nattapat-Clicknext-Internship-2024"
 
+track_history = defaultdict(lambda: [])
 
-def draw_boxes(frame, boxes):
-    """Draw detected bounding boxes on image frame"""
+def draw_boxes(frame, boxes):    
 
-    # Create annotator object
     annotator = Annotator(frame)
+    i = 0
     for box in boxes:
+        x, y, w, h = box.xywh[0]
         class_id = box.cls
         class_name = model.names[int(class_id)]
         coordinator = box.xyxy[0]
-        confidence = box.conf
+        confidence = box.conf[0]
+        track = track_history[i]
+        track.append((float(x), float(y)))
 
-    # Draw bounding box
-    annotator.box_label(
-        box=coordinator, label=class_name, color=colors(class_id, True)
-    )
+        annotator.box_label(box=coordinator, label=class_name, color=(255,0,0))
+
+        if len(track) > 20:
+            track.pop(0)
+
+        annotator.draw_centroid_and_tracks(track, color=(255, 0, 255), track_thickness=2)
 
     return annotator.result()
 
-
 def detect_object(frame):
-    """Detect object from image frame"""
 
-    # Detect object from image frame
-    results = model.prediction(frame)
+    results = model.track(source=frame, classes= 15, persist=True)
 
     for result in results:
-    frame = draw_boxes(frame, result.boxes)
-
+        frame = draw_boxes(frame, result.boxes)
+        
     return frame
-
 
 if __name__ == "__main__":
     video_path = "CatZoomies.mp4"
-    cap = cv.VideoCapture(video_path)
-
-    # Define the codec and create VideoWriter object
-    video_writer = cv.VideoWriter(
-        video_path + "_demo.avi", cv.VideoWriter_fourcc(*"MJPG"), 30, (1280, 720)
-    )
+    cap = cv2.VideoCapture(video_path)
 
     while cap.isOpened():
-        # Read image frame
-        ret, frame = cap.read_frame()
-
+        ret, frame = cap.read()
+        
         if ret:
-            # Detect motorcycle from image frame
             frame_result = detect_object(frame)
 
-            # Write result to video
-            video_writer.write(frame_result)
-
-            # Show result
-            cv.namedWindow("Video", cv.WINDOW_NORMAL)
-            cv.imshow("Video", frame_result)
-            cv.waitKey(30)
+            cv2.putText(frame_result, text, (650, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA)
+            cv2.namedWindow("Video", cv2.WINDOW_NORMAL)
+            cv2.imshow("Video", frame_result)
+            cv2.waitKey(5)
 
         else:
             break
 
-    # Release the VideoCapture object and close the window
-    video_writer.release()
     cap.release()
     cv2.destroyAllWindows()
